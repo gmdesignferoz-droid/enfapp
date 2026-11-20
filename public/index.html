@@ -394,5 +394,60 @@ const _av=admV;admV=function(){setTimeout(lims,0);return _av().replace('<h1>Usu�
 async function cps(){const x=$('#np').value,y=$('#np2').value;if(x.length<6)return alert('A senha precisa ter 6 ou mais caracteres.');if(x!==y)return alert('As duas senhas não são iguais.');
 try{const q=await sbq('/auth/v1/user',{method:'PUT',body:JSON.stringify({password:x})}),j=await q.json().catch(()=>({}));if(!q.ok)throw new Error(ER[j.msg]||j.msg||j.message||'Erro ao alterar a senha.');alert('Senha alterada com sucesso!');render()}catch(e){sbe(e)}}
 const _cv3=cfgV;cfgV=function(){const h=_cv3();return SB().tok?h.replace('<h2 style="margin-top:18px">Conta</h2>',`<h2 style="margin-top:18px">Alterar senha</h2><label>Nova senha</label><input id="np" type="password" autocomplete="new-password"><label>Repita a nova senha</label><input id="np2" type="password" autocomplete="new-password"><p></p><button class="b" onclick="cps()">Alterar senha</button><h2 style="margin-top:18px">Conta</h2>`):h};
+
+/* ENFapp Push Notifications — Web Push via Supabase */
+function pushVapidBytes(value){
+  const pad='='.repeat((4-value.length%4)%4);
+  const raw=atob((value+pad).replace(/-/g,'+').replace(/_/g,'/'));
+  return Uint8Array.from(raw,c=>c.charCodeAt(0));
+}
+async function pushSubscribe(){
+  try{
+    const c=SB();
+    if(!c.tok)return alert('Entre na sua conta para ativar as notificações.');
+    if(!('serviceWorker' in navigator)||!('PushManager' in window)||!('Notification' in window))
+      return alert('Este navegador não oferece suporte a notificações push. Atualize o navegador ou instale o ENFapp como aplicativo.');
+    if(!isSecureContext)return alert('As notificações exigem uma conexão HTTPS.');
+    let permission=Notification.permission;
+    if(permission==='default')permission=await Notification.requestPermission();
+    if(permission!=='granted')return alert('Permissão não concedida. Autorize as notificações nas configurações do navegador.');
+    const reg=await navigator.serviceWorker.register('/sw.js',{scope:'/'});
+    await navigator.serviceWorker.ready;
+    const kr=await sbq('/functions/v1/push?action=key',{method:'POST',body:'{}'});
+    const kj=await kr.json().catch(()=>({}));
+    if(!kr.ok||!kj.key)throw new Error(kj.error||'Não foi possível obter a chave pública de notificações.');
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:pushVapidBytes(kj.key)});
+    const data=sub.toJSON();
+    if(!data.endpoint||!data.keys?.p256dh||!data.keys?.auth)throw new Error('O navegador não retornou os dados da inscrição push.');
+    const saved=await sbq('/rest/v1/rpc/claim_push',{method:'POST',body:JSON.stringify({
+      p_endpoint:data.endpoint,p_p256dh:data.keys.p256dh,p_auth:data.keys.auth,
+      p_tz:Intl.DateTimeFormat().resolvedOptions().timeZone||'America/Sao_Paulo'
+    })});
+    if(!saved.ok)throw new Error(await saved.text());
+    alert('Notificações ativadas neste dispositivo! Agora você poderá receber alertas do ENFapp.');
+  }catch(e){sbe(e)}
+}
+async function pushTest(){
+  try{
+    if(!SB().tok)return alert('Entre na sua conta para testar as notificações.');
+    const reg=await navigator.serviceWorker.getRegistration('/');
+    const sub=reg&&await reg.pushManager.getSubscription();
+    if(!sub)return alert('Este dispositivo ainda não está inscrito. Primeiro toque em Ativar notificações.');
+    const q=await sbq('/functions/v1/push?action=test',{method:'POST',body:'{}'});
+    const j=await q.json().catch(()=>({}));
+    if(!q.ok)throw new Error(j.error||'Falha ao enviar a notificação de teste.');
+    if(!j.enviadas)return alert('Não foi possível entregar a notificação. Confira a inscrição deste dispositivo e tente ativar novamente.');
+    alert('Notificação de teste enviada! Confira a central de notificações do aparelho.');
+  }catch(e){sbe(e)}
+}
+const _cfgPush=cfgV;
+cfgV=function(){
+  const h=_cfgPush();
+  if(!SB().tok)return h;
+  const section='<h2 style="margin-top:18px">Notificações do ENFapp</h2><p class="mu">Ative as notificações neste aparelho para receber lembretes e avisos mesmo quando o ENFapp não estiver aberto.</p><button class="b" onclick="pushSubscribe()">Ativar notificações neste aparelho</button><p></p><button class="b" style="background:var(--cd);color:var(--tx);border:1px solid var(--bd)" onclick="pushTest()">Enviar notificação de teste</button>';
+  return h.replace('<h2 style="margin-top:18px">Conta</h2>',section+'<h2 style="margin-top:18px">Conta</h2>');
+};
+
 ld()?render():login();
 </script></body></html>
