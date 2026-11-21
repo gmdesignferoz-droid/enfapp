@@ -16,4 +16,3 @@ O app usa somente a URL do projeto e a chave **anon** (pública). Nunca coloque 
 ## Supabase: Authentication > URL Configuration
 - Site URL: `https://enfapp.netlify.app`
 - Redirect URLs: `https://enfapp.netlify.app`
-# enfapp
