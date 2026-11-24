@@ -878,5 +878,22 @@ planoV=function(){
     (p.role==='master'?'<p>Você possui acesso permanente. Nenhuma cobrança é necessária.</p>':'<p>Escolha o plano ideal e pague com segurança pelo Mercado Pago. Não existe plano gratuito.</p><button class="b ghost" onclick="refreshPlanStatus()">Atualizar meu acesso</button><div id="plan-price-list"><p class="mu">Carregando planos e valores…</p></div>');
 };
 
+
+/* Bloqueio visual quando o período de teste ou plano expirar */
+const _renderPlanGate=render;
+render=function(){
+  if(ld()){
+    const p=prof(),demo=!!p.demo;
+    if(!demo&&p.role!=='master'){
+      const now=new Date();
+      const trialOk=p.status==='teste'&&p.trial_ends_at&&new Date(p.trial_ends_at)>now;
+      const today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+      const paidOk=p.status==='ativo'&&(!p.plan_expires_at||p.plan_expires_at>=today);
+      if(!trialOk&&!paidOk&&tab!=='plano'){window._lk='';tab='plano'}
+    }
+  }
+  _renderPlanGate();
+};
+
 ld()?render():login();setTimeout(dec,50);
 </script></body></html>
